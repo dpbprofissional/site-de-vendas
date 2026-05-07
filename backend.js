@@ -74,22 +74,30 @@ app.post('/api/pix/create', async (req, res) => {
     const externalId = `PEDIDO_${user.id.slice(0, 8)}_${Date.now()}`;
     const amount = Number(PRODUCT_AMOUNT);
 
-    const pgRes = await fetch(`${PIXGO_BASE_URL}/payment/create`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-API-Key': PIXGO_API_KEY },
-      body: JSON.stringify({
-        amount,
-        description: PRODUCT_NAME,
-        customer_name: user.user_metadata?.full_name || user.email,
-        customer_email: user.email,
-        customer_phone: phone,
-        external_id: externalId,
-      }),
-    });
+    let pgRes;
+    try {
+      pgRes = await fetch(`${PIXGO_BASE_URL}/payment/create`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-API-Key': PIXGO_API_KEY },
+        body: JSON.stringify({
+          amount,
+          description: PRODUCT_NAME,
+          customer_name: user.user_metadata?.full_name || user.email,
+          customer_email: user.email,
+          customer_phone: phone,
+          external_id: externalId,
+        }),
+        signal: AbortSignal.timeout(10000), // 10s timeout
+      });
+    } catch (fetchErr) {
+      console.error('Fetch error (create):', fetchErr);
+      return res.status(504).json({ success: false, message: 'Tempo esgotado ao conectar com o gateway' });
+    }
+
     const result = await pgRes.json().catch(() => ({}));
     if (!pgRes.ok || !result.success) {
       console.error('PixGo error', pgRes.status, result);
-      return res.status(502).json({ success: false, message: result.message || 'Falha no gateway' });
+      return res.status(502).json({ success: false, message: result.message || 'Falha no gateway de pagamento' });
     }
 
     const { error: dbErr } = await adminDb.from('orders').insert({
@@ -130,10 +138,21 @@ app.get('/api/pix/status/:paymentId', async (req, res) => {
       return res.json({ success: true, data: { status: order.status } });
     }
 
-    const pgRes = await fetch(`${PIXGO_BASE_URL}/payment/${encodeURIComponent(paymentId)}/status`, {
-      headers: { 'X-API-Key': PIXGO_API_KEY },
-    });
+    let pgRes;
+    try {
+      pgRes = await fetch(`${PIXGO_BASE_URL}/payment/${encodeURIComponent(paymentId)}/status`, {
+        headers: { 'X-API-Key': PIXGO_API_KEY },
+        signal: AbortSignal.timeout(10000),
+      });
+    } catch (fetchErr) {
+      console.error('Fetch error (status):', fetchErr);
+      return res.status(504).json({ success: false, message: 'Erro ao consultar status no gateway' });
+    }
+
     const result = await pgRes.json().catch(() => ({}));
+    if (!pgRes.ok) {
+      return res.status(pgRes.status).json({ success: false, message: result.message || 'Erro na consulta' });
+    }
     res.json(result);
   } catch (err) {
     console.error('status', err);
@@ -214,18 +233,28 @@ async function handleCompleted(paymentData) {
 
   if (transporter) {
     try {
+      const userName = order.profiles?.full_name || 'Cliente';
       await transporter.sendMail({
-        from: GMAIL_USER,
+        from: `"${PRODUCT_NAME}" <${GMAIL_USER}>`,
         to: order.profiles?.email,
-        subject: 'Seu acesso foi liberado!',
+        subject: `✅ Acesso Liberado: ${order.product_name}`,
         html: `
-          <h2>Bem-vindo ao ${order.product_name}!</h2>
-          <p>Olá ${order.profiles?.full_name || ''},</p>
-          <p>Seu pagamento foi confirmado. Clique para acessar:</p>
-          <p><a href="${order.product_url}" style="background:#32bcad;color:#fff;padding:10px 20px;border-radius:5px;text-decoration:none;">ACESSAR</a></p>
+          <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #eee; padding: 20px; border-radius: 10px;">
+            <h2 style="color: #7c3aed;">Olá, ${userName}!</h2>
+            <p>Ótimas notícias! Seu pagamento foi confirmado e seu acesso ao <strong>${order.product_name}</strong> já está disponível.</p>
+            <div style="text-align: center; margin: 30px 0;">
+              <a href="${order.product_url}" style="background: linear-gradient(135deg, #7c3aed 0%, #ec4899 100%); color: #fff; padding: 15px 30px; border-radius: 8px; text-decoration: none; font-weight: bold; display: inline-block;">
+                ACESSAR MEU PRODUTO
+              </a>
+            </div>
+            <p style="font-size: 12px; color: #666;">Se o botão acima não funcionar, copie e cole este link no seu navegador:<br>${order.product_url}</p>
+            <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
+            <p style="font-size: 12px; color: #999; text-align: center;">Este é um e-mail automático, por favor não responda.</p>
+          </div>
         `,
       });
-    } catch (e) { console.error('mail', e); }
+      console.log(`E-mail enviado para ${order.profiles?.email}`);
+    } catch (e) { console.error('Erro ao enviar e-mail:', e); }
   }
 }
 

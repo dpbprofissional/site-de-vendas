@@ -78,24 +78,42 @@
     if (password.length < 8) return toast('Senha deve ter pelo menos 8 caracteres.', 'error');
 
     const btn = e.submitter || e.target.querySelector('button[type="submit"]');
-    if (btn) btn.disabled = true;
+    const btnSpan = btn ? btn.querySelector('span') : null;
+    const originalText = btnSpan ? btnSpan.textContent : (btn ? btn.textContent : '');
+    if (btn) {
+      btn.disabled = true;
+      if (btnSpan) btnSpan.textContent = 'CRIANDO CONTA...'; else btn.textContent = 'CRIANDO CONTA...';
+    }
     try {
       const { data, error } = await supabase.auth.signUp({
         email, password,
         options: { data: { full_name: name, cpf } },
       });
       if (error) return toast(error.message, 'error');
-      // perfil é criado por trigger no DB (recomendado) — fallback opcional:
+      
+      // O perfil é criado via trigger no banco, mas garantimos aqui por redundância
       if (data.user) {
         await supabase.from('profiles').upsert({
           id: data.user.id, email, full_name: name, cpf,
         }, { onConflict: 'id' });
       }
-      toast('Conta criada! Verifique seu e-mail.', 'success');
+      
+      toast('Conta criada com sucesso!', 'success');
+      if (data.session) {
+        currentUser = data.user;
+        showProductSection();
+      } else {
+        toast('Verifique seu e-mail para confirmar o cadastro.', 'info');
+      }
       e.target.reset();
     } catch (err) {
       console.error(err); toast('Erro ao criar conta.', 'error');
-    } finally { if (btn) btn.disabled = false; }
+    } finally { 
+      if (btn) {
+        btn.disabled = false;
+        if (btnSpan) btnSpan.textContent = originalText; else btn.textContent = originalText;
+      }
+    }
   }
 
   async function handleLogin(e) {
@@ -104,13 +122,27 @@
     const password = $('login_password').value;
     if (!isValidEmail(email) || !password) return toast('Preencha e-mail e senha.', 'error');
     const btn = e.submitter || e.target.querySelector('button[type="submit"]');
-    if (btn) btn.disabled = true;
+    const btnSpan = btn ? btn.querySelector('span') : null;
+    const originalText = btnSpan ? btnSpan.textContent : (btn ? btn.textContent : '');
+    if (btn) {
+      btn.disabled = true;
+      if (btnSpan) btnSpan.textContent = 'ENTRANDO...'; else btn.textContent = 'ENTRANDO...';
+    }
     try {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) return toast(error.message, 'error');
-      currentUser = data.user; showProductSection();
-    } catch (err) { console.error(err); toast('Erro ao entrar.', 'error'); }
-    finally { if (btn) btn.disabled = false; }
+      currentUser = data.user; 
+      toast('Bem-vindo de volta!', 'success');
+      showProductSection();
+    } catch (err) { 
+      console.error(err); 
+      toast('Erro ao entrar. Verifique suas credenciais.', 'error'); 
+    } finally { 
+      if (btn) {
+        btn.disabled = false;
+        if (btnSpan) btnSpan.textContent = originalText; else btn.textContent = originalText;
+      }
+    }
   }
 
   async function handleLogout() {
