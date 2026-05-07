@@ -1,164 +1,188 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Página de Vendas - Produto Exclusivo</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <style>
-        .pix-gradient {
-            background: linear-gradient(135deg, #32bcad 0%, #2a9d8f 100%);
-        }
-        #qr-code-container img {
-            margin: 0 auto;
-            max-width: 250px;
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Painel de Recargas — acesso vitalício, melhor taxa do mercado, suporte 24/7. Pagamento via PIX." />
+  <title>Painel de Recargas — Pagamento via PIX</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --brand1:#7c3aed; --brand2:#ec4899; --brand3:#06b6d4;
+    }
+    html,body{font-family:'Inter',ui-sans-serif,system-ui,sans-serif;}
+    body{
+      background:
+        radial-gradient(1200px 600px at -10% -20%, rgba(124,58,237,.35), transparent 60%),
+        radial-gradient(900px 500px at 110% 10%, rgba(236,72,153,.30), transparent 60%),
+        radial-gradient(700px 500px at 50% 120%, rgba(6,182,212,.25), transparent 60%),
+        #0b0820;
+      color:#f8fafc; min-height:100vh;
+    }
+    .brand-text{
+      background:linear-gradient(90deg,var(--brand1),var(--brand2),var(--brand3));
+      -webkit-background-clip:text;background-clip:text;color:transparent;
+    }
+    .btn-grad{
+      background:linear-gradient(135deg,var(--brand1) 0%,var(--brand2) 50%,var(--brand3) 100%);
+      background-size:200% 200%;
+      transition:transform .2s ease, box-shadow .2s ease, background-position .6s ease;
+      box-shadow:0 10px 30px -10px rgba(236,72,153,.55);
+    }
+    .btn-grad:hover{transform:translateY(-2px);background-position:100% 0;box-shadow:0 18px 40px -12px rgba(124,58,237,.7);}
+    .btn-grad:active{transform:translateY(0);}
+    .glass{
+      background:linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,.03));
+      backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
+      border:1px solid rgba(255,255,255,.12);
+      box-shadow:0 30px 80px -30px rgba(0,0,0,.6);
+    }
+    .field{
+      background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:#fff;
+      transition:all .2s;
+    }
+    .field::placeholder{color:rgba(255,255,255,.45)}
+    .field:focus{outline:none;border-color:rgba(236,72,153,.7);box-shadow:0 0 0 4px rgba(236,72,153,.15);background:rgba(255,255,255,.09)}
+    .chip{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15)}
+    .toast{position:fixed;top:1rem;right:1rem;z-index:50;animation:pop .25s ease}
+    @keyframes pop{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+    #qr-code-container img{margin:0 auto;max-width:250px;border-radius:.75rem}
+    .pulse-dot{width:.5rem;height:.5rem;border-radius:9999px;background:#22c55e;box-shadow:0 0 0 0 rgba(34,197,94,.7);animation:pulse 1.5s infinite}
+    @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(34,197,94,.7)}70%{box-shadow:0 0 0 12px rgba(34,197,94,0)}100%{box-shadow:0 0 0 0 rgba(34,197,94,0)}}
+    .tab-active{background:linear-gradient(135deg,var(--brand1),var(--brand2));color:#fff}
+    .tab-inactive{color:rgba(255,255,255,.7)}
+  </style>
 </head>
-<body class="bg-gray-50 font-sans">
+<body>
+  <div id="toast" class="toast hidden"></div>
 
-    <!-- Header -->
-    <header class="bg-white shadow-sm">
-        <div class="max-w-7xl mx-auto px-4 py-6 flex justify-between items-center">
-            <h1 class="text-2xl font-bold text-gray-900">Minha Loja</h1>
-            <div id="user-info" class="hidden flex items-center gap-4">
-                <span id="user-email" class="text-gray-700"></span>
-                <button onclick="logout()" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">Sair</button>
-            </div>
-        </div>
-    </header>
+  <header class="max-w-7xl mx-auto px-4 py-6 flex justify-between items-center">
+    <div class="flex items-center gap-2">
+      <div class="w-9 h-9 rounded-xl btn-grad flex items-center justify-center font-black">M</div>
+      <h1 class="text-xl font-extrabold tracking-tight">Minha <span class="brand-text">Loja</span></h1>
+    </div>
+    <div id="user-info" class="hidden items-center gap-3">
+      <span id="user-email" class="text-sm text-white/70 hidden sm:inline"></span>
+      <button id="btn-logout" class="chip text-white px-4 py-2 rounded-lg text-sm hover:bg-white/10">Sair</button>
+    </div>
+  </header>
 
-    <main class="max-w-4xl mx-auto px-4 py-12">
-        
-        <!-- Auth Section -->
-        <div id="auth-section" class="mb-12">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <!-- Login Form -->
-                <div class="bg-white p-8 rounded-2xl shadow-xl border border-gray-100">
-                    <h2 class="text-2xl font-bold mb-6">Entrar na Conta</h2>
-                    <div class="mb-4">
-                        <label class="block text-sm font-medium text-gray-700 mb-1">E-mail</label>
-                        <input type="email" id="login_email" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent outline-none" placeholder="seu@email.com">
-                    </div>
-                    <div class="mb-6">
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Senha</label>
-                        <input type="password" id="login_password" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent outline-none" placeholder="••••••••">
-                    </div>
-                    <button onclick="handleLogin()" class="w-full pix-gradient text-white font-bold py-3 rounded-xl hover:opacity-90 transition-all">
-                        ENTRAR
-                    </button>
-                </div>
+  <main class="max-w-5xl mx-auto px-4 pb-16">
+    <!-- Hero -->
+    <div class="text-center max-w-2xl mx-auto mt-6 mb-10">
+      <span class="chip inline-flex items-center gap-2 text-xs px-3 py-1 rounded-full mb-4">
+        <span class="pulse-dot"></span> Pagamento via PIX • Aprovação instantânea
+      </span>
+      <h2 class="text-4xl sm:text-5xl font-extrabold leading-tight">
+        Acesso ao <span class="brand-text">melhor painel</span> de recargas do Brasil
+      </h2>
+      <p class="text-white/70 mt-3">Recarregue celulares, pague contas e venda mais com as menores taxas. Acesso vitalício.</p>
+    </div>
 
-                <!-- Register Form -->
-                <div class="bg-white p-8 rounded-2xl shadow-xl border border-gray-100">
-                    <h2 class="text-2xl font-bold mb-6">Criar Conta</h2>
-                    <div class="mb-4">
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Nome Completo</label>
-                        <input type="text" id="register_name" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent outline-none" placeholder="Seu nome">
-                    </div>
-                    <div class="mb-4">
-                        <label class="block text-sm font-medium text-gray-700 mb-1">E-mail</label>
-                        <input type="email" id="register_email" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent outline-none" placeholder="seu@email.com">
-                    </div>
-                    <div class="mb-4">
-                        <label class="block text-sm font-medium text-gray-700 mb-1">CPF</label>
-                        <input type="text" id="register_cpf" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent outline-none" placeholder="000.000.000-00">
-                    </div>
-                    <div class="mb-6">
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Senha</label>
-                        <input type="password" id="register_password" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent outline-none" placeholder="••••••••">
-                    </div>
-                    <button onclick="handleRegister()" class="w-full pix-gradient text-white font-bold py-3 rounded-xl hover:opacity-90 transition-all">
-                        CRIAR CONTA
-                    </button>
-                </div>
-            </div>
+    <!-- Auth -->
+    <section id="auth-section" aria-label="Autenticação">
+      <div class="glass rounded-3xl p-6 sm:p-8 max-w-md mx-auto">
+        <div class="flex p-1 rounded-xl chip mb-6">
+          <button type="button" id="tab-login" class="tab-active flex-1 py-2 rounded-lg text-sm font-semibold transition">Entrar</button>
+          <button type="button" id="tab-register" class="tab-inactive flex-1 py-2 rounded-lg text-sm font-semibold transition">Criar conta</button>
         </div>
 
-        <!-- Product Section (Hidden until logged in) -->
-        <div id="product-section" class="hidden">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-12 items-start">
-                
-                <!-- Product Info -->
-                <div>
-                    <img src="https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80" alt="Produto" class="rounded-2xl shadow-lg mb-6">
-                    <h2 class="text-3xl font-extrabold text-gray-900 mb-4">Painel de Recargas</h2>
-                    <p class="text-gray-600 mb-6">Acesso imediato ao melhor painel de recargas do mercado. Recarregue celulares, pague contas e muito mais com os melhores preços.</p>
-                    <ul class="space-y-3 text-gray-700">
-                        <li class="flex items-center">
-                            <svg class="w-5 h-5 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                            Acesso Vitalício
-                        </li>
-                        <li class="flex items-center">
-                            <svg class="w-5 h-5 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                            Suporte 24/7
-                        </li>
-                        <li class="flex items-center">
-                            <svg class="w-5 h-5 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                            Melhor Taxa do Mercado
-                        </li>
-                    </ul>
-                </div>
+        <form id="login-form" novalidate>
+          <label class="block text-xs font-medium text-white/70 mb-1" for="login_email">E-mail</label>
+          <input type="email" id="login_email" autocomplete="email" required
+            class="field w-full px-4 py-3 rounded-xl mb-4" placeholder="seu@email.com" />
+          <label class="block text-xs font-medium text-white/70 mb-1" for="login_password">Senha</label>
+          <input type="password" id="login_password" autocomplete="current-password" required minlength="8"
+            class="field w-full px-4 py-3 rounded-xl mb-6" placeholder="••••••••" />
+          <button type="submit" class="btn-grad w-full text-white font-bold py-3.5 rounded-xl">ENTRAR</button>
+        </form>
 
-                <!-- Checkout Section -->
-                <div class="bg-white p-8 rounded-2xl shadow-xl border border-gray-100">
-                    <div id="checkout-form">
-                        <h3 class="text-xl font-bold mb-6">Finalizar Compra</h3>
-                        <div class="mb-4">
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Telefone</label>
-                            <input type="text" id="customer_phone" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent outline-none" placeholder="(11) 99999-9999">
-                        </div>
-                        
-                        <div class="flex justify-between items-center mb-6 p-4 bg-gray-50 rounded-lg">
-                            <span class="text-gray-600">Total a pagar:</span>
-                            <span class="text-2xl font-bold text-teal-600">R$ 47,00</span>
-                        </div>
+        <form id="register-form" class="hidden" novalidate>
+          <label class="block text-xs font-medium text-white/70 mb-1" for="register_name">Nome completo</label>
+          <input type="text" id="register_name" autocomplete="name" required maxlength="120"
+            class="field w-full px-4 py-3 rounded-xl mb-3" placeholder="Seu nome" />
+          <label class="block text-xs font-medium text-white/70 mb-1" for="register_email">E-mail</label>
+          <input type="email" id="register_email" autocomplete="email" required
+            class="field w-full px-4 py-3 rounded-xl mb-3" placeholder="seu@email.com" />
+          <label class="block text-xs font-medium text-white/70 mb-1" for="register_cpf">CPF</label>
+          <input type="text" id="register_cpf" inputmode="numeric" required maxlength="14"
+            class="field w-full px-4 py-3 rounded-xl mb-3" placeholder="000.000.000-00" />
+          <label class="block text-xs font-medium text-white/70 mb-1" for="register_password">Senha (mín. 8)</label>
+          <input type="password" id="register_password" autocomplete="new-password" required minlength="8"
+            class="field w-full px-4 py-3 rounded-xl mb-6" placeholder="••••••••" />
+          <button type="submit" class="btn-grad w-full text-white font-bold py-3.5 rounded-xl">CRIAR CONTA</button>
+        </form>
+      </div>
+    </section>
 
-                        <button onclick="generatePix()" id="btn-pay" class="w-full pix-gradient text-white font-bold py-4 rounded-xl shadow-lg hover:opacity-90 transition-all flex justify-center items-center">
-                            <span id="btn-text">PAGAR COM PIX</span>
-                            <svg id="btn-loader" class="hidden animate-spin ml-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
-                        </button>
-                    </div>
-
-                    <!-- PIX Display Area -->
-                    <div id="pix-display" class="hidden text-center">
-                        <h3 class="text-xl font-bold mb-4">Escaneie o QR Code</h3>
-                        <div id="qr-code-container" class="mb-6 bg-white p-4 inline-block rounded-lg border border-gray-200">
-                            <!-- QR Code Image will be inserted here -->
-                        </div>
-                        <div class="mb-6">
-                            <p class="text-sm text-gray-500 mb-2">Ou copie o código abaixo:</p>
-                            <div class="flex gap-2">
-                                <input type="text" id="pix-code" readonly class="w-full px-3 py-2 bg-gray-100 border border-gray-300 rounded text-xs font-mono overflow-hidden text-ellipsis">
-                                <button onclick="copyPixCode()" class="bg-teal-600 text-white px-4 py-2 rounded font-bold text-sm">Copiar</button>
-                            </div>
-                        </div>
-                        <div class="flex items-center justify-center text-teal-600 font-medium animate-pulse">
-                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                            Aguardando pagamento...
-                        </div>
-                    </div>
-
-                    <!-- Success Message -->
-                    <div id="payment-success" class="hidden text-center py-8">
-                        <div class="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-6">
-                            <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                        </div>
-                        <h3 class="text-2xl font-bold text-gray-900 mb-2">Pagamento Confirmado!</h3>
-                        <p class="text-gray-600 mb-6">Seu acesso foi liberado. Clique no botão abaixo para acessar o painel.</p>
-                        <a id="product-link" href="https://creditodecelular.com/recargas" target="_blank" class="inline-block pix-gradient text-white font-bold py-3 px-8 rounded-xl hover:opacity-90 transition-all">
-                            ACESSAR PAINEL
-                        </a>
-                    </div>
-                </div>
-            </div>
+    <!-- Produto -->
+    <section id="product-section" class="hidden" aria-label="Compra do produto">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
+        <div class="glass rounded-3xl p-6">
+          <img src="https://images.unsplash.com/photo-1556742400-b5b7c5121f3a?auto=format&fit=crop&w=900&q=80"
+            alt="Painel de Recargas" loading="lazy" class="rounded-2xl mb-5 w-full h-56 object-cover" />
+          <h2 class="text-2xl font-extrabold mb-2">Painel de Recargas <span class="brand-text">PRO</span></h2>
+          <p class="text-white/70 mb-5">Acesso imediato e vitalício. As melhores taxas do mercado, suporte 24/7 e atualizações inclusas.</p>
+          <ul class="space-y-2 text-white/85">
+            <li class="flex items-center gap-2"><span class="text-emerald-400">✓</span>Acesso vitalício</li>
+            <li class="flex items-center gap-2"><span class="text-emerald-400">✓</span>Suporte 24/7</li>
+            <li class="flex items-center gap-2"><span class="text-emerald-400">✓</span>Melhor taxa do mercado</li>
+            <li class="flex items-center gap-2"><span class="text-emerald-400">✓</span>Garantia de 7 dias</li>
+          </ul>
         </div>
-    </main>
 
-    <script src="script.js"></script>
+        <div class="glass rounded-3xl p-6 sm:p-8">
+          <form id="checkout-form" novalidate>
+            <h3 class="text-lg font-bold mb-5">Finalizar compra</h3>
+            <label class="block text-xs font-medium text-white/70 mb-1" for="customer_phone">Telefone</label>
+            <input type="tel" id="customer_phone" inputmode="tel" required maxlength="15"
+              class="field w-full px-4 py-3 rounded-xl mb-5" placeholder="(11) 99999-9999" />
+            <div class="flex justify-between items-center mb-6 p-4 rounded-xl chip">
+              <span class="text-white/70 text-sm">Total a pagar</span>
+              <span id="total-display" class="text-2xl font-extrabold brand-text">R$ 47,00</span>
+            </div>
+            <button type="submit" id="btn-pay"
+              class="btn-grad w-full text-white font-bold py-4 rounded-xl flex justify-center items-center disabled:opacity-60 disabled:cursor-not-allowed">
+              <span id="btn-text">PAGAR COM PIX</span>
+              <svg id="btn-loader" class="hidden animate-spin ml-2 h-5 w-5 text-white" viewBox="0 0 24 24" fill="none">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+              </svg>
+            </button>
+          </form>
+
+          <div id="pix-display" class="hidden text-center">
+            <h3 class="text-lg font-bold mb-4">Escaneie o QR Code</h3>
+            <div id="qr-code-container" class="mb-5 bg-white p-3 inline-block rounded-2xl"></div>
+            <p id="pix-expires" class="text-xs text-white/60 mb-3"></p>
+            <p class="text-xs text-white/60 mb-2">Ou copie o código:</p>
+            <div class="flex gap-2 mb-5">
+              <input type="text" id="pix-code" readonly aria-label="Código PIX copia e cola"
+                class="field w-full px-3 py-2 rounded-lg text-xs font-mono" />
+              <button type="button" id="btn-copy" class="btn-grad text-white px-4 py-2 rounded-lg font-bold text-sm">Copiar</button>
+            </div>
+            <div class="flex items-center justify-center text-emerald-400 font-medium">
+              <span class="pulse-dot mr-2"></span> Aguardando pagamento...
+            </div>
+            <button type="button" id="btn-cancel-pix" class="mt-5 text-xs text-white/60 hover:text-white underline">Cancelar e voltar</button>
+          </div>
+
+          <div id="payment-success" class="hidden text-center py-8">
+            <div class="text-5xl mb-3">✅</div>
+            <h3 class="text-xl font-extrabold mb-2">Pagamento confirmado!</h3>
+            <p class="text-white/70 mb-5">Enviamos o link de acesso para o seu e-mail.</p>
+            <a id="link-product" href="#" target="_blank" rel="noopener"
+              class="btn-grad inline-block text-white font-bold py-3 px-6 rounded-xl">ACESSAR PRODUTO</a>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="config.js"></script>
+  <script src="script.js"></script>
 </body>
 </html>
